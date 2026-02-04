@@ -39,8 +39,17 @@ class OpenClawGlassesApp extends AppServer {
         const wakeWords = ['hey claw', 'hey openclaw', 'ok claw'];
         const hasWakeWord = wakeWords.some(w => userText.includes(w));
 
-        // Check for sleep command
-        const sleepWords = ['go to sleep', 'sleep', 'stop listening', 'bye'];
+        // Check for sleep command (multi-language)
+        const sleepWords = [
+          // English
+          'go to sleep', 'sleep', 'stop listening', 'bye', 'goodbye', 'good night',
+          // Chinese (Mandarin)
+          '再见', '拜拜', '晚安', '睡觉', '停止', '休息', '结束',
+          // Cantonese romanization
+          'baibai', 'zai jian',
+          // Other common
+          'ciao', 'adios', 'sayonara', 'auf wiedersehen'
+        ];
         const hasSleepWord = sleepWords.some(w => userText.includes(w));
 
         if (hasSleepWord && state.listening) {
