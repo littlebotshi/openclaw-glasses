@@ -1,15 +1,15 @@
 {
-  "name": "mentraos-cloud-example-app",
+  "name": "openclaw-glasses",
   "version": "1.0.0",
   "main": "index.js",
+  "description": "Voice-controlled AI assistant for Even G1 smart glasses using OpenClaw and MentraOS",
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
   "dependencies": {
     "@mentra/sdk": "latest",
     "dotenv": "^17.2.3",

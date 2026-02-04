@@ -26,7 +26,7 @@ class OpenClawGlassesApp extends AppServer {
     this.sessionStates.set(sessionId, { listening: false, lastCommand: 0 });
 
     // Show welcome message
-    session.layouts.showTextWall("🦀 Say 'Hey Little Bot' to activate");
+    session.layouts.showTextWall("🦀 Say 'Hey Claw' to activate");
 
     // Handle real-time transcription
     session.events.onTranscription(async (data) => {
@@ -36,7 +36,7 @@ class OpenClawGlassesApp extends AppServer {
         console.log(`[Transcription] ${data.text.trim()} (listening: ${state.listening})`);
 
         // Check for wake word
-        const wakeWords = ['hey little bot', 'little bot'];
+        const wakeWords = ['hey claw', 'hey openclaw', 'ok claw'];
         const hasWakeWord = wakeWords.some(w => userText.includes(w));
 
         // Check for sleep command
@@ -45,7 +45,7 @@ class OpenClawGlassesApp extends AppServer {
 
         if (hasSleepWord && state.listening) {
           state.listening = false;
-          session.layouts.showTextWall("😴 Sleeping... Say 'Hey Little Bot' to wake", {
+          session.layouts.showTextWall("😴 Sleeping... Say 'Hey Claw' to wake", {
             view: ViewType.MAIN,
             durationMs: 3000
           });
@@ -65,7 +65,7 @@ class OpenClawGlassesApp extends AppServer {
         // Auto-sleep after 30 seconds of inactivity
         if (state.listening && Date.now() - state.lastCommand > 30000) {
           state.listening = false;
-          session.layouts.showTextWall("😴 Auto-sleep... Say 'Hey Little Bot' to wake", {
+          session.layouts.showTextWall("😴 Auto-sleep... Say 'Hey Claw' to wake", {
             view: ViewType.MAIN,
             durationMs: 2000
           });
