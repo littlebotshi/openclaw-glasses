@@ -1,64 +1,73 @@
-# MentraOS-Display-Example-App
+# OpenClaw Glasses
 
-### Install MentraOS on your phone
+Voice-controlled AI assistant for Even G1 smart glasses using [OpenClaw](https://openclaw.ai) and [MentraOS](https://mentra.ai).
 
-MentraOS install links: [mentra.glass/install](https://mentra.glass/install)
+## Features
 
-### (Easiest way to get started) Set up ngrok
+- 🎤 **Wake word activation** - Say "Hey Little Bot" to activate
+- 🦀 **OpenClaw integration** - Full AI assistant capabilities
+- 👓 **Optimized for glasses** - Short, readable responses
+- 😴 **Auto-sleep** - Saves battery when inactive
 
-1. `brew install ngrok`
+## Prerequisites
 
-2. Make an ngrok account
+- Node.js 18+
+- [OpenClaw](https://openclaw.ai) installed and running (`openclaw gateway`)
+- [MentraOS](https://console.mentra.ai) account and API key
+- Even G1 smart glasses paired via MentraOS app
 
-3. [Use ngrok to make a static address/URL](https://dashboard.ngrok.com/)
+## Setup
 
-### Register your App with MentraOS
+1. Clone and install:
+```bash
+git clone https://github.com/YOUR_USERNAME/openclaw-glasses.git
+cd openclaw-glasses
+npm install
+```
 
-1. Navigate to [console.mentra.glass](https://console.mentra.glass/)
+2. Create `.env` file:
+```bash
+cp .env.example .env
+```
 
-2. Click "Sign In", and log in with the same account you're using for MentraOS
+3. Edit `.env` with your credentials:
+```
+PORT=3000
+PACKAGE_NAME=your.package.name
+MENTRAOS_API_KEY=your_mentra_api_key
+OPENCLAW_URL=http://localhost:8780
+```
 
-3. Click "Create App"
+4. Start OpenClaw gateway:
+```bash
+openclaw gateway
+```
 
-4. Set a unique package name like `com.yourName.yourAppName`
+5. Run the app:
+```bash
+npm run dev
+```
 
-5. For "Public URL", enter your Ngrok's static URL
+6. Open MentraOS console, connect your glasses, and select this app.
 
-6. In the edit app screen, add the microphone permission
+## Voice Commands
 
-### Get your App running!
+| Command | Action |
+|---------|--------|
+| "Hey Little Bot" | 👂 Wake up and listen |
+| [your question] | 🦀 Send to OpenClaw |
+| "Go to sleep" / "Bye" | 😴 Sleep mode |
 
-1. [Install bun](https://bun.sh/docs/installation)
+## Running as a Service (macOS)
 
-2. Create a new repo from this template using the `Use this template` dropdown in the upper right or the following command: `gh repo create --template Mentra-Community/MentraOS-Cloud-Example-App`
+Create a LaunchAgent for auto-start:
 
-    ![Create repo from template](https://github.com/user-attachments/assets/c10e14e8-2dc5-4dfa-adac-dd334c1b73a5)
+```bash
+# Create plist at ~/Library/LaunchAgents/ai.openclaw.glasses.plist
+launchctl load ~/Library/LaunchAgents/ai.openclaw.glasses.plist
+launchctl start ai.openclaw.glasses
+```
 
-3. Clone your new repo locally: `git clone <your-repo-url>`
+## License
 
-4. cd into your repo, then type `bun install`
-
-5. Set up your environment variables:
-   * Create a `.env` file in the root directory by copying the example: `cp .env.example .env`
-   * Edit the `.env` file with your app details:
-     ```
-     PORT=3000
-     PACKAGE_NAME=com.yourName.yourAppName
-     MENTRAOS_API_KEY=your_api_key_from_console
-     ```
-   * Make sure the `PACKAGE_NAME` matches what you registered in the MentraOS Console
-   * Get your `API_KEY` from the MentraOS Developer Console
-
-6. Run your app with `bun run dev`
-
-7. To expose your app to the internet (and thus MentraOS) with ngrok, run: `ngrok http --url=<YOUR_NGROK_URL_HERE> 3000`
-    * `3000` is the port. It must match what is in the app config. For example, if you entered `port: 8080`, use `8080` for ngrok instead.
-
-
-### Next Steps
-
-Check out the full documentation at [docs.mentra.glass](https://docs.mentra.glass/core-concepts)
-
-#### Subscribing to events
-
-You can listen for transcriptions, translations, and other events within the onSession function.
+MIT

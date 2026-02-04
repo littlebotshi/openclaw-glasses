@@ -1,13 +1,5 @@
-.env
 node_modules/
-bun.lock
-.DS_Store
+.env
 *.log
-# VSCode
-.vscode/
-# Mac system files
 .DS_Store
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log* 
+dist/

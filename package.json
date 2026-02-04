@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "bun src/index.ts",
-    "dev": "bun --hot src/index.ts",
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -12,13 +12,15 @@
   "description": "",
   "dependencies": {
     "@mentra/sdk": "latest",
+    "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "ws": "^8.18.1"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.14",
-    "@types/ws": "^8.18.0"
+    "@types/ws": "^8.18.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
   }
 }
