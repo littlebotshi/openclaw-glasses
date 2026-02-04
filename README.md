@@ -1,6 +1,6 @@
 # OpenClaw Glasses
 
-Voice-controlled AI assistant for Even G1 smart glasses using [OpenClaw](https://openclaw.ai) and [MentraOS](https://mentra.ai).
+Voice-controlled AI assistant for smart glasses using [OpenClaw](https://openclaw.ai) and [MentraOS](https://mentra.ai).
 
 Created by [@shibenshi](https://x.com/shibenshi)
 
@@ -16,7 +16,7 @@ Created by [@shibenshi](https://x.com/shibenshi)
 - Node.js 18+
 - [OpenClaw](https://openclaw.ai) installed and running
 - [MentraOS](https://console.mentra.ai) account and API key
-- Even G1 smart glasses paired via MentraOS app
+- Smart glasses supported by MentraOS (Even G1, etc.) paired via MentraOS app
 
 ## Setup
 
