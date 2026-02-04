@@ -33,17 +33,28 @@ cp .env.example .env
 # Edit .env with your MentraOS API key
 ```
 
-3. **Start OpenClaw gateway:**
+3. **Start ngrok tunnel:**
+```bash
+ngrok http 3000
+```
+Copy the HTTPS URL (e.g., `https://abc123.ngrok-free.app`)
+
+4. **Register in MentraOS Console:**
+   - Go to [console.mentra.ai](https://console.mentra.ai)
+   - Add your app with the ngrok URL as the endpoint
+   - Copy your API key to `.env`
+
+5. **Start OpenClaw gateway:**
 ```bash
 openclaw gateway
 ```
 
-4. **Run the app:**
+6. **Run the app:**
 ```bash
 npm run dev
 ```
 
-5. **Connect glasses:**
+7. **Connect glasses:**
    - Open [MentraOS Console](https://console.mentra.ai)
    - Pair your Even G1 glasses
    - Select this app from the app list
