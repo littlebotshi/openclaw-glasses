@@ -1,135 +1,117 @@
-# OpenClaw Glasses
+# OpenClaw Glasses App
 
-Voice-controlled AI assistant for smart glasses using [OpenClaw](https://openclaw.ai) and [MentraOS](https://mentra.ai).
-
-Created by [@shibenshi](https://x.com/shibenshi)
+Voice-controlled AI assistant for Even Realities G1 smart glasses, powered by [OpenClaw](https://openclaw.ai).
 
 ## Features
 
-- 🎤 **Wake word activation** - Say "Hey Claw" to start
-- 🦀 **OpenClaw integration** - Full AI assistant capabilities  
-- 👓 **Optimized for glasses** - Short, readable responses
-- 😴 **Auto-sleep** - Saves battery when inactive
+- 🎤 **Voice activation** - Say "Hello" to wake, "Goodbye" to sleep
+- ⚡ **Fast responses** - Uses WebSocket gateway (~3s) with CLI fallback (~8s)
+- 🔄 **Auto-reconnect** - Resilient connection with exponential backoff
+- 💤 **Battery-efficient** - Only processes when activated
 
 ## Prerequisites
 
-- Node.js 18+
-- [OpenClaw](https://openclaw.ai) installed and running
-- [MentraOS](https://console.mentra.ai) account and API key
-- [Smart glasses supported by MentraOS](https://mentraglass.com) (Even G1, Vuzix Z100, TCL Rayneo, INMO Air, etc.)
+1. **MentraOS Developer Account** - Get API key from [mentra.ai](https://mentra.ai)
+2. **OpenClaw CLI** - Install and authenticate: `npm i -g openclaw && openclaw auth`
+3. **Even Realities G1 glasses** - Paired with MentraOS app
 
 ## Setup
 
-1. **Clone and install:**
-```bash
-git clone https://github.com/YOUR_USERNAME/openclaw-glasses.git
-cd openclaw-glasses
-npm install
-```
+1. Clone and install:
+   ```bash
+   git clone https://github.com/littlehome-eugene/openclaw-glasses.git
+   cd openclaw-glasses
+   npm install
+   ```
 
-2. **Configure environment:**
-```bash
-cp .env.example .env
-# Edit .env with your MentraOS API key
-```
+2. Configure `.env`:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
 
-3. **Start ngrok tunnel:**
-```bash
-ngrok http 3000
-```
-Copy the HTTPS URL (e.g., `https://abc123.ngrok-free.app`)
+3. Run:
+   ```bash
+   npm start
+   ```
 
-4. **Register in MentraOS Console:**
-   - Go to [console.mentra.ai](https://console.mentra.ai)
-   - Add your app with the ngrok URL as the endpoint
-   - Copy your API key to `.env`
+## Environment Variables
 
-5. **Start OpenClaw gateway:**
-```bash
-openclaw gateway
-```
-
-6. **Run the app:**
-```bash
-npm run dev
-```
-
-7. **Connect glasses:**
-   - Open [MentraOS Console](https://console.mentra.ai)
-   - Pair your Even G1 glasses
-   - Select this app from the app list
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PACKAGE_NAME` | ✅ | Your MentraOS app package name |
+| `MENTRAOS_API_KEY` | ✅ | Your MentraOS API key |
+| `PORT` | ❌ | Server port (default: 3000) |
+| `GLASSES_PROMPT` | ❌ | Custom system prompt |
+| `COMMAND_TIMEOUT_MS` | ❌ | AI response timeout (default: 30000) |
+| `AUTO_SLEEP_MS` | ❌ | Auto-sleep after inactivity (default: 30000) |
 
 ## Usage
 
-Once connected, you'll see "🦀 Say 'Hey Claw' to activate" on your glasses.
+1. Start the app: `npm start`
+2. Connect glasses to MentraOS app
+3. Say **"Hello"** to activate
+4. Ask anything!
+5. Say **"Goodbye"** to deactivate
 
-### Voice Commands
+## Architecture
 
-| Say this | What happens |
-|----------|--------------|
-| **"Hey Claw"** | 👂 Wakes up and starts listening |
-| **[your question]** | 🦀 Sends to OpenClaw, shows response |
-| **"Go to sleep"** or **"Bye"** | 😴 Stops listening (saves battery) |
-
-### Example Conversation
-
-1. **You:** "Hey Claw"  
-   **Glasses:** 👂 Listening! What can I help with?
-
-2. **You:** "What's the weather like?"  
-   **Glasses:** Currently 72°F, sunny with light breeze.
-
-3. **You:** "Go to sleep"  
-   **Glasses:** 😴 Sleeping... Say 'Hey Claw' to wake
-
-### Tips
-
-- Keep questions **short and specific** for best results
-- The display shows **max 150 characters** - responses are auto-truncated
-- **Auto-sleep** kicks in after 30 seconds of inactivity
-- Customize wake words in `src/index.ts` (line 39)
-
-## Customization
-
-### Change Wake Word
-Edit `src/index.ts` line 39:
-```typescript
-const wakeWords = ['hey claw', 'hey openclaw', 'ok claw'];
-// Add your own: ['hey jarvis', 'computer', ...]
+```
+src/
+├── index.ts              # Entry point, global error handlers
+├── config.ts             # Environment configuration
+├── types.ts              # TypeScript types
+├── state-machine.ts      # Session state management
+└── handlers/
+    ├── gateway-client.ts # WebSocket gateway client
+    ├── openclaw.ts       # AI query (gateway + CLI fallback)
+    └── transcription.ts  # Voice command handling
 ```
 
-### Adjust Response Length
-Edit `src/index.ts` line 93:
-```typescript
-const displayText = response.length > 150  // Change limit here
-```
+## Gateway vs CLI
+
+The app tries the WebSocket gateway first for faster responses:
+
+| Method | Response Time |
+|--------|---------------|
+| Gateway (WebSocket) | ~2-3s ✅ |
+| CLI (fallback) | ~7-8s |
+
+The gateway requires OpenClaw authentication (`openclaw auth`).
 
 ## Running as a Service (macOS)
 
-Create `~/Library/LaunchAgents/ai.openclaw.glasses.plist`:
+Create a LaunchAgent for persistent running:
 
-```xml
+```bash
+# Create plist
+cat > ~/Library/LaunchAgents/ai.openclaw.glasses.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>ai.openclaw.glasses</string>
+    <key>WorkingDirectory</key>
+    <string>/path/to/openclaw-glasses</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/node</string>
-        <string>/path/to/openclaw-glasses/dist/index.js</string>
+        <string>/usr/local/bin/npm</string>
+        <string>start</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/glasses.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/glasses.err.log</string>
 </dict>
 </plist>
-```
+EOF
 
-Then:
-```bash
+# Load service
 launchctl load ~/Library/LaunchAgents/ai.openclaw.glasses.plist
 ```
 
