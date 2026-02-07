@@ -2,16 +2,9 @@
  * State machine for managing glasses session lifecycle
  */
 
-import { AppSession } from '@mentra/sdk';
-import { SessionState } from './types';
-import { AUTO_SLEEP_MS, RESPONSE_DISPLAY_MS } from './config';
-
-interface SessionData {
-    session: AppSession;
-    state: SessionState;
-    lastActivity: number;
-    sleepTimer: ReturnType<typeof setTimeout> | null;
-}
+import { AppSession, ViewType } from '@mentra/sdk';
+import { SessionState, SessionData } from './types';
+import { AUTO_SLEEP_MS } from './config';
 
 class StateMachine {
     private sessions = new Map<string, SessionData>();
@@ -23,24 +16,27 @@ class StateMachine {
             lastActivity: Date.now(),
             sleepTimer: null
         });
+        console.log(`[StateMachine] Session ${sessionId} created in IDLE state`);
     }
 
     getSession(sessionId: string): SessionData | undefined {
         return this.sessions.get(sessionId);
     }
 
-    activate(sessionId: string): void {
+    activate(sessionId: string, speakerId?: number | string): void {
         const data = this.sessions.get(sessionId);
         if (!data) return;
 
         data.state = SessionState.LISTENING;
         data.lastActivity = Date.now();
+        data.activeSpeakerId = speakerId;
         this.resetSleepTimer(sessionId);
 
         data.session.layouts.showTextWall("👂 Listening! What can I help with?", {
+            view: ViewType.MAIN,
             durationMs: 2000
         });
-        console.log(`[State] ${sessionId} -> LISTENING`);
+        console.log(`[StateMachine] ${sessionId}: IDLE -> LISTENING (speaker: ${speakerId ?? 'unknown'})`);
     }
 
     deactivate(sessionId: string, reason: 'manual' | 'auto' = 'manual'): void {
@@ -48,6 +44,7 @@ class StateMachine {
         if (!data) return;
 
         data.state = SessionState.IDLE;
+        data.activeSpeakerId = undefined;
         this.clearSleepTimer(sessionId);
 
         const message = reason === 'auto'
@@ -55,9 +52,10 @@ class StateMachine {
             : "😴 Sleeping... Say 'Hello' to wake";
 
         data.session.layouts.showTextWall(message, {
+            view: ViewType.MAIN,
             durationMs: 2000
         });
-        console.log(`[State] ${sessionId} -> IDLE (${reason})`);
+        console.log(`[StateMachine] ${sessionId} -> IDLE (${reason})`);
     }
 
     canProcessCommand(sessionId: string): boolean {

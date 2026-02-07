@@ -1,0 +1,28 @@
+{
+    "name": "OpenClaw",
+    "description": "Voice-controlled AI assistant for smart glasses",
+    "version": "1.0.0",
+    "settings": [
+        {
+            "type": "group",
+            "title": "Voice Settings"
+        },
+        {
+            "key": "mode",
+            "type": "select",
+            "label": "Mode",
+            "defaultValue": "commanding",
+            "options": [
+                {
+                    "label": "🎯 Commanding (only my voice)",
+                    "value": "commanding"
+                },
+                {
+                    "label": "👂 Listening (all voices)",
+                    "value": "listening"
+                }
+            ]
+        }
+    ],
+    "tools": []
+}
