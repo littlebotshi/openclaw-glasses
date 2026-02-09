@@ -37,8 +37,8 @@ function isLikelyBackgroundNoise(data: TranscriptionData, text: string): string 
     }
 
     // Heuristic: very short duration utterances are likely ambient
-    const startTime = data.startTime ? new Date(data.startTime).getTime() : 0;
-    const endTime = data.endTime ? new Date(data.endTime).getTime() : 0;
+    const startTime = data.startTime || 0;
+    const endTime = data.endTime || 0;
     const durationMs = endTime - startTime;
     if (durationMs > 0 && durationMs < MIN_DURATION_MS) {
         return `too short (${durationMs}ms < ${MIN_DURATION_MS}ms)`;

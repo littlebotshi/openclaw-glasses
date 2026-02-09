@@ -22,8 +22,8 @@ export interface TranscriptionData {
     isFinal: boolean;
     language?: string;
     confidence?: number;
-    startTime?: string;
-    endTime?: string;
+    startTime?: number;
+    endTime?: number;
     metadata?: any;
 }
 

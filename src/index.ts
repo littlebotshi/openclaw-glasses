@@ -66,6 +66,13 @@ class OpenClawGlassesApp extends AppServer {
     // Show welcome message
     session.layouts.showTextWall("🦀 Say 'Hello' to start");
 
+    // Absorb SDK error events to prevent process crashes.
+    // The SDK emits errors (connection timeouts, session not found, etc.) on the
+    // internal EventEmitter. Without a listener, Node.js crashes the process.
+    session.events.onError((err: any) => {
+      console.warn(`[Session] SDK error (absorbed): ${err.message || err}`);
+    });
+
     // Handle transcriptions
     session.events.onTranscription(async (data) => {
       await handleTranscription(data, sessionId, session);
