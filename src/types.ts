@@ -1,38 +1,48 @@
 import { AppSession } from '@mentra/sdk';
 
-// Session state enum
+/**
+ * Session states as a finite state machine
+ */
 export enum SessionState {
-    IDLE = 'idle',
-    LISTENING = 'listening',
-    PROCESSING = 'processing'
+    IDLE = 'IDLE',           // Not listening, waiting for wake word
+    LISTENING = 'LISTENING', // Actively listening for commands
+    PROCESSING = 'PROCESSING' // Processing a command (waiting for OpenClaw response)
 }
 
-// Session data stored per connected glasses
+/**
+ * Session data stored per connected glasses
+ */
 export interface SessionData {
-    session: AppSession;
     state: SessionState;
     lastActivity: number;
-    sleepTimer: ReturnType<typeof setTimeout> | null;
+    session: AppSession;
+    autoSleepTimer?: NodeJS.Timeout;
     activeSpeakerId?: number | string;  // Speaker who triggered wake word
 }
 
-// Transcription data from glasses
-export interface TranscriptionData {
-    text: string;
-    isFinal: boolean;
-    language?: string;
-    confidence?: number;
-    startTime?: number;
-    endTime?: number;
-    metadata?: any;
-}
+/**
+ * Transcription event data - re-exported from SDK (includes confidence, metadata, etc.)
+ */
+export type { TranscriptionData } from '@mentra/sdk';
 
-// OpenClaw CLI response format
+/**
+ * OpenClaw API response structure
+ */
 export interface OpenClawResponse {
-    status: string;
+    status: 'ok' | 'error';
     result?: {
         payloads?: Array<{
-            text?: string;
+            text: string;
+            mediaUrl?: string | null;
         }>;
+        meta?: {
+            durationMs: number;
+            agentMeta?: {
+                sessionId: string;
+                provider: string;
+                model: string;
+            };
+        };
     };
+    error?: string;
 }

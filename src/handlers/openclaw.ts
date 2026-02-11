@@ -1,8 +1,3 @@
-/**
- * OpenClaw query handler
- * Uses gateway WebSocket for speed, falls back to CLI
- */
-
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GLASSES_PROMPT, COMMAND_TIMEOUT_MS } from '../config';
@@ -11,7 +6,7 @@ import { getGatewayClient } from './gateway-client';
 
 const execAsync = promisify(exec);
 
-// Enable gateway by default (set to false to use CLI only)
+// Try gateway with device registration flow
 let useGateway = true;
 
 /**
@@ -26,7 +21,7 @@ export async function queryOpenClaw(message: string, sessionId: string): Promise
         try {
             const startTime = Date.now();
             const client = getGatewayClient(`glasses-${sessionId}`);
-            const response = await client.sendMessage(fullMessage, COMMAND_TIMEOUT_MS);
+            const response = await client.sendMessage(fullMessage, 8000); // Fail fast to CLI
             console.log(`[OpenClaw] Gateway response in ${Date.now() - startTime}ms`);
             return response;
         } catch (error) {

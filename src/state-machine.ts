@@ -1,115 +1,178 @@
-/**
- * State machine for managing glasses session lifecycle
- */
-
 import { AppSession, ViewType } from '@mentra/sdk';
 import { SessionState, SessionData } from './types';
 import { AUTO_SLEEP_MS } from './config';
 
-class StateMachine {
+/**
+ * State machine for managing session lifecycle
+ */
+export class SessionStateMachine {
     private sessions = new Map<string, SessionData>();
 
-    createSession(sessionId: string, session: AppSession): void {
-        this.sessions.set(sessionId, {
-            session,
+    /**
+     * Initialize a new session in IDLE state
+     */
+    createSession(sessionId: string, session: AppSession): SessionData {
+        const data: SessionData = {
             state: SessionState.IDLE,
             lastActivity: Date.now(),
-            sleepTimer: null
-        });
+            session
+        };
+        this.sessions.set(sessionId, data);
         console.log(`[StateMachine] Session ${sessionId} created in IDLE state`);
+        return data;
     }
 
+    /**
+     * Get session data
+     */
     getSession(sessionId: string): SessionData | undefined {
         return this.sessions.get(sessionId);
     }
 
-    activate(sessionId: string, speakerId?: number | string): void {
+    /**
+     * Transition to LISTENING state
+     */
+    activate(sessionId: string, speakerId?: number | string): boolean {
         const data = this.sessions.get(sessionId);
-        if (!data) return;
+        if (!data) return false;
 
-        data.state = SessionState.LISTENING;
-        data.lastActivity = Date.now();
-        data.activeSpeakerId = speakerId;
-        this.resetSleepTimer(sessionId);
+        if (data.state === SessionState.IDLE) {
+            data.state = SessionState.LISTENING;
+            data.lastActivity = Date.now();
+            data.activeSpeakerId = speakerId;
+            this.startAutoSleepTimer(sessionId, data);
+            console.log(`[StateMachine] Session ${sessionId}: IDLE -> LISTENING (speaker: ${speakerId ?? 'unknown'})`);
 
-        data.session.layouts.showTextWall("👂 Listening! What can I help with?", {
-            view: ViewType.MAIN,
-            durationMs: 2000
-        });
-        console.log(`[StateMachine] ${sessionId}: IDLE -> LISTENING (speaker: ${speakerId ?? 'unknown'})`);
+            data.session.layouts.showTextWall("👂 Listening! How can I help?", {
+                view: ViewType.MAIN,
+                durationMs: 3000
+            });
+            return true;
+        }
+        return false;
     }
 
-    deactivate(sessionId: string, reason: 'manual' | 'auto' = 'manual'): void {
+    /**
+     * Transition to IDLE (sleep) state
+     */
+    deactivate(sessionId: string, reason: 'manual' | 'auto' = 'manual'): boolean {
         const data = this.sessions.get(sessionId);
-        if (!data) return;
+        if (!data) return false;
 
-        data.state = SessionState.IDLE;
-        data.activeSpeakerId = undefined;
-        this.clearSleepTimer(sessionId);
+        if (data.state === SessionState.LISTENING || data.state === SessionState.PROCESSING) {
+            data.state = SessionState.IDLE;
+            data.activeSpeakerId = undefined;
+            this.clearAutoSleepTimer(data);
+            console.log(`[StateMachine] Session ${sessionId}: ${data.state} -> IDLE (${reason})`);
 
-        const message = reason === 'auto'
-            ? "😴 Auto-sleep... Say 'Hello' to wake"
-            : "😴 Sleeping... Say 'Hello' to wake";
+            const emoji = reason === 'auto' ? '😴' : '💤';
+            const message = reason === 'auto'
+                ? `${emoji} Auto-sleep... Say 'Hello' to wake`
+                : `${emoji} Sleeping... Say 'Hello' to wake`;
 
-        data.session.layouts.showTextWall(message, {
-            view: ViewType.MAIN,
-            durationMs: 2000
-        });
-        console.log(`[StateMachine] ${sessionId} -> IDLE (${reason})`);
+            data.session.layouts.showTextWall(message, {
+                view: ViewType.MAIN,
+                durationMs: 3000
+            });
+            return true;
+        }
+        return false;
     }
 
+    /**
+     * Transition to PROCESSING state (when handling a command)
+     */
+    startProcessing(sessionId: string): boolean {
+        const data = this.sessions.get(sessionId);
+        if (!data) return false;
+
+        if (data.state === SessionState.LISTENING) {
+            data.state = SessionState.PROCESSING;
+            data.lastActivity = Date.now();
+            this.clearAutoSleepTimer(data);
+            console.log(`[StateMachine] Session ${sessionId}: LISTENING -> PROCESSING`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Finish processing and return to LISTENING state
+     */
+    finishProcessing(sessionId: string): boolean {
+        const data = this.sessions.get(sessionId);
+        if (!data) return false;
+
+        if (data.state === SessionState.PROCESSING) {
+            data.state = SessionState.LISTENING;
+            data.lastActivity = Date.now();
+            this.startAutoSleepTimer(sessionId, data);
+            console.log(`[StateMachine] Session ${sessionId}: PROCESSING -> LISTENING`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if session is in a state that allows processing commands
+     */
     canProcessCommand(sessionId: string): boolean {
         const data = this.sessions.get(sessionId);
         return data?.state === SessionState.LISTENING;
     }
 
+    /**
+     * Check if session is processing (to prevent overlapping requests)
+     */
     isProcessing(sessionId: string): boolean {
         const data = this.sessions.get(sessionId);
         return data?.state === SessionState.PROCESSING;
     }
 
-    startProcessing(sessionId: string): void {
+    /**
+     * Update last activity timestamp
+     */
+    touch(sessionId: string): void {
         const data = this.sessions.get(sessionId);
         if (data) {
-            data.state = SessionState.PROCESSING;
             data.lastActivity = Date.now();
-            this.clearSleepTimer(sessionId);
         }
     }
 
-    finishProcessing(sessionId: string): void {
+    /**
+     * Remove session (on disconnect)
+     */
+    removeSession(sessionId: string): void {
         const data = this.sessions.get(sessionId);
         if (data) {
-            data.state = SessionState.LISTENING;
-            data.lastActivity = Date.now();
-            this.resetSleepTimer(sessionId);
+            this.clearAutoSleepTimer(data);
+            this.sessions.delete(sessionId);
+            console.log(`[StateMachine] Session ${sessionId} removed`);
         }
     }
 
-    private resetSleepTimer(sessionId: string): void {
-        this.clearSleepTimer(sessionId);
-        const data = this.sessions.get(sessionId);
-        if (!data) return;
-
-        data.sleepTimer = setTimeout(() => {
+    /**
+     * Start auto-sleep timer
+     */
+    private startAutoSleepTimer(sessionId: string, data: SessionData): void {
+        this.clearAutoSleepTimer(data);
+        data.autoSleepTimer = setTimeout(() => {
             if (data.state === SessionState.LISTENING) {
                 this.deactivate(sessionId, 'auto');
             }
         }, AUTO_SLEEP_MS);
     }
 
-    private clearSleepTimer(sessionId: string): void {
-        const data = this.sessions.get(sessionId);
-        if (data?.sleepTimer) {
-            clearTimeout(data.sleepTimer);
-            data.sleepTimer = null;
+    /**
+     * Clear auto-sleep timer
+     */
+    private clearAutoSleepTimer(data: SessionData): void {
+        if (data.autoSleepTimer) {
+            clearTimeout(data.autoSleepTimer);
+            data.autoSleepTimer = undefined;
         }
-    }
-
-    removeSession(sessionId: string): void {
-        this.clearSleepTimer(sessionId);
-        this.sessions.delete(sessionId);
     }
 }
 
-export const stateMachine = new StateMachine();
+// Singleton instance
+export const stateMachine = new SessionStateMachine();

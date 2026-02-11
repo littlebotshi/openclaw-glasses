@@ -1,12 +1,3 @@
-/**
- * OpenClaw Glasses App
- * 
- * Voice-controlled AI assistant for Even Realities G1 smart glasses.
- * Connects to OpenClaw via WebSocket gateway for fast responses.
- * 
- * See README.md for setup instructions.
- */
-
 import { AppServer, AppSession, ViewType } from '@mentra/sdk';
 import { PACKAGE_NAME, MENTRAOS_API_KEY, PORT } from './config';
 import { stateMachine } from './state-machine';
@@ -20,74 +11,101 @@ const APP_CONFIG_JSON = fs.readFileSync(APP_CONFIG_PATH, 'utf-8');
 
 // Global error handlers - prevent crashes
 process.on('uncaughtException', (err) => {
-  console.error('[FATAL] Uncaught exception:', err);
-  // Log but don't exit - try to keep running
+    console.error('[FATAL] Uncaught exception:', err);
+    // Log but don't exit - try to keep running
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[WARN] Unhandled rejection at:', promise, 'reason:', reason);
+    console.error('[WARN] Unhandled rejection at:', promise, 'reason:', reason);
+    // Log but continue running
 });
 
 /**
- * Main application class
+ * OpenClaw Glasses App - MentraOS Integration
+ * 
+ * A voice-controlled AI assistant for Even Realities G1 glasses.
+ * Uses a state machine to manage session lifecycle:
+ * - IDLE: Waiting for wake word
+ * - LISTENING: Ready to receive commands
+ * - PROCESSING: Handling a command (prevents overlapping requests)
  */
 class OpenClawGlassesApp extends AppServer {
-  constructor() {
-    super({
-      packageName: PACKAGE_NAME,
-      apiKey: MENTRAOS_API_KEY,
-      port: PORT,
-    });
-  }
+    private hasConnectedBefore = false;
 
-  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
-    console.log(`[Session] New session: ${sessionId} for user: ${userId}`);
-
-    // Load app config (settings schema) and initialize defaults
-    // The CONNECTION_ACK may not include settings if the cloud doesn't have them yet,
-    // so we load the config and apply defaults as a fallback.
-    try {
-      session.loadConfigFromJson(APP_CONFIG_JSON);
-      const currentSettings = session.settings.getAll();
-      if (!currentSettings || currentSettings.length === 0) {
-        const defaults = session.getDefaultSettings();
-        session.updateSettingsForTesting(defaults);
-        console.log(`[Session] App config loaded, applied ${defaults.length} default settings`);
-      } else {
-        console.log(`[Session] App config loaded, ${currentSettings.length} settings from cloud`);
-      }
-    } catch (err) {
-      console.error(`[Session] Failed to load app config:`, err);
+    constructor() {
+        super({
+            packageName: PACKAGE_NAME,
+            apiKey: MENTRAOS_API_KEY,
+            port: PORT,
+        });
     }
 
-    // Initialize session in state machine
-    stateMachine.createSession(sessionId, session);
+    protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
+        console.log(`[Session] New session: ${sessionId} for user: ${userId}`);
 
-    // Show welcome message
-    session.layouts.showTextWall("🦀 Say 'Hello' to start");
+        // Load app config (settings schema) and initialize defaults
+        try {
+            session.loadConfigFromJson(APP_CONFIG_JSON);
+            const currentSettings = session.settings.getAll();
+            if (!currentSettings || currentSettings.length === 0) {
+                const defaults = session.getDefaultSettings();
+                session.updateSettingsForTesting(defaults);
+                console.log(`[Session] App config loaded, applied ${defaults.length} default settings`);
+            } else {
+                console.log(`[Session] App config loaded, ${currentSettings.length} settings from cloud`);
+            }
+        } catch (err) {
+            console.error(`[Session] Failed to load app config:`, err);
+        }
 
-    // Absorb SDK error events to prevent process crashes.
-    // The SDK emits errors (connection timeouts, session not found, etc.) on the
-    // internal EventEmitter. Without a listener, Node.js crashes the process.
-    session.events.onError((err: any) => {
-      console.warn(`[Session] SDK error (absorbed): ${err.message || err}`);
-    });
+        // Initialize session in state machine
+        stateMachine.createSession(sessionId, session);
 
-    // Handle transcriptions
-    session.events.onTranscription(async (data) => {
-      await handleTranscription(data, sessionId, session);
-    });
+        // Show welcome only on first connection, not reconnects
+        if (!this.hasConnectedBefore) {
+            session.layouts.showTextWall("🤖 Say 'Hello' to start");
+            this.hasConnectedBefore = true;
+        }
 
-    // Listen for mode setting changes
-    session.settings.onValueChange<string>('mode', (newMode, oldMode) => {
-      console.log(`[Settings] Mode changed: ${oldMode} → ${newMode}`);
-      const emoji = newMode === 'commanding' ? '🎯' : '👂';
-      session.layouts.showTextWall(`${emoji} Mode: ${newMode}`, {
-        view: ViewType.MAIN,
-        durationMs: 3000
-      });
-    });
-  }
+        // Absorb SDK error events to prevent process crashes
+        session.events.onError((err: any) => {
+            console.warn(`[Session] SDK error (absorbed): ${err.message || err}`);
+        });
+
+        // Handle transcriptions
+        session.events.onTranscription(async (data) => {
+            await handleTranscription(data, sessionId, session);
+        });
+
+        // Listen for mode setting changes
+        session.settings.onValueChange<string>('mode', (newMode, oldMode) => {
+            console.log(`[Settings] Mode changed: ${oldMode} → ${newMode}`);
+            const emoji = newMode === 'commanding' ? '🎯' : '👂';
+            session.layouts.showTextWall(`${emoji} Mode: ${newMode}`, {
+                view: ViewType.MAIN,
+                durationMs: 3000
+            });
+        });
+    }
+
+    protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
+        console.log(`[Session] Stopped: ${reason} (session: ${sessionId}).`);
+        const session = (this as any).activeSessions?.get(sessionId);
+        if (session) {
+            session.disconnect();
+            (this as any).activeSessions?.delete(sessionId);
+            (this as any).activeSessionsByUserId?.delete(userId);
+        }
+
+        // If SDK permanently lost connection (e.g. network change), restart process
+        // so LaunchAgent gives us a fresh connection
+        if (reason.includes('permanently lost') || reason.includes('Maximum reconnection')) {
+            console.log('[Session] SDK permanently disconnected — restarting in 5s for fresh connection...');
+            setTimeout(() => {
+                process.exit(0); // Clean exit → LaunchAgent restarts us
+            }, 5000);
+        }
+    }
 }
 
 // Start the server
